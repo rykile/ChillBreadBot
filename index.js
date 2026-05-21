@@ -2,84 +2,170 @@
 require("dotenv").config();
 
 const {
-  Client,
-  GatewayIntentBits,
-  PermissionsBitField
-} = require("discord.js");
+Client,
+GatewayIntentBits,
+PermissionsBitField
+}=require("discord.js");
 
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-    GatewayIntentBits.DirectMessages
-  ]
+const client=new Client({
+
+intents:[
+GatewayIntentBits.Guilds,
+GatewayIntentBits.GuildMessages,
+GatewayIntentBits.MessageContent,
+GatewayIntentBits.DirectMessages
+]
+
 });
 
-// 招待チャンネル
-const inviteChannels = [
- "1506605319357464659",
- "1506605435082375219",
- "1506605496730128565",
- "1506605706093138123",
- "1506605768286277712",
- "1506605819439874058"
+const inviteChannels=[
+
+"1506605319357464659",
+"1506605435082375219",
+"1506605496730128565",
+"1506605706093138123",
+"1506605768286277712",
+"1506605819439874058"
+
 ];
 
-// 単語認識辞書
-const words = {
+// 助詞込み→正規化
 
-  音楽:{
-    type:"topic",
-    reply:[
-      "音楽の話きた🎵",
-      "音楽いいね〜",
-      "曲作り気になる"
-    ]
-  },
+const normalize={
 
-  韓国語:{
-    type:"language",
-    reply:[
-      "韓国語いいね🇰🇷",
-      "韓国語勉強してるの？",
-      "発音むずいよね笑"
-    ]
-  },
+"僕が":"僕",
+"僕は":"僕",
+"僕を":"僕",
+"僕に":"僕",
+"僕の":"僕",
 
-  学校:{
-    type:"life",
-    reply:[
-      "学校どうだった？",
-      "学校お疲れ☕"
-    ]
-  },
+"私が":"私",
+"私は":"私",
+"私を":"私",
 
-  疲れた:{
-    type:"emotion",
-    reply:[
-      "ちゃんと休んで🥲",
-      "無理しすぎ注意"
-    ]
-  },
+"学校で":"学校",
+"家で":"家",
 
-  楽しい:{
-    type:"emotion",
-    reply:[
-      "それは良かった！",
-      "楽しそう笑"
-    ]
-  }
+"音楽を":"音楽",
+"韓国語を":"韓国語",
+"ゲームを":"ゲーム",
+
+"作った":"作る",
+"勉強してる":"勉強",
+"やってる":"する",
+
+"楽しかった":"楽しい",
+"疲れてる":"疲れた"
 
 };
 
-client.once(
-"ready",
-()=>{
+// 単語辞書
+
+const dictionary={
+
+"僕":{
+type:"S",
+value:"RYK!LE"
+},
+
+"私":{
+type:"S",
+value:"ユーザー"
+},
+
+"今日":{
+type:"time",
+value:"今日"
+},
+
+"昨日":{
+type:"time",
+value:"昨日"
+},
+
+"学校":{
+type:"place",
+value:"学校"
+},
+
+"家":{
+type:"place",
+value:"家"
+},
+
+"音楽":{
+type:"O",
+value:"音楽"
+},
+
+"韓国語":{
+type:"O",
+value:"韓国語"
+},
+
+"ゲーム":{
+type:"O",
+value:"ゲーム"
+},
+
+"友達":{
+type:"O",
+value:"友達"
+},
+
+"作る":{
+type:"V"
+},
+
+"勉強":{
+type:"V"
+},
+
+"好き":{
+type:"V"
+},
+
+"する":{
+type:"V"
+},
+
+"楽しい":{
+type:"emotion",
+reply:[
+"楽しそう🔥",
+"いいね！"
+]
+},
+
+"疲れた":{
+type:"emotion",
+reply:[
+"無理しないで🥲",
+"休憩大事"
+]
+},
+
+"眠い":{
+type:"emotion",
+reply:[
+"寝よう🤣",
+"それは眠いやつ笑"
+]
+},
+
+"やばい":{
+reply:[
+"何があった🤣",
+"気になる笑"
+]
+}
+
+};
+
+client.once("ready",()=>{
 
 console.log(
-`${client.user.tag}
-起動完了☕`
+`${client.user.tag} 起動完了☕`
 );
 
 });
@@ -88,16 +174,13 @@ client.on(
 "messageCreate",
 async(message)=>{
 
-if(message.author.bot)
-return;
-
-const msg=
-message.content;
+if(message.author.bot)return;
 
 const lower=
-msg.toLowerCase();
+message.content.toLowerCase();
 
-// 招待欄制御
+
+// 招待欄
 
 if(
 inviteChannels.includes(
@@ -112,77 +195,99 @@ PermissionsBitField
 .Flags
 .Administrator
 )
-){
-return;
-}
+)return;
 
 if(
 message.mentions
 .users.size>0
-){
-return;
-}
+)return;
 
 try{
 
 await message.delete();
 
 await message.author.send(
-"⚠️ 招待欄ではメンション付きのみ送信できます！"
+"⚠️ 招待欄ではメンション付きのみ！"
 );
 
-}catch{
-
-}
+}catch{}
 
 return;
 
 }
 
+
 // AI
 
 if(
-lower.startsWith(
-"!ai"
-)
+lower.startsWith("!ai")
 ){
 
-const text=
-msg.replace(
+let text=
+message.content
+.replace(
 "!ai",
 ""
-).trim();
+)
+.trim();
 
-if(!text){
+for(
+const key
+in normalize
+){
 
-return message.reply(
-"☕ 話しかけて〜"
+text=
+text.replaceAll(
+key,
+normalize[key]
 );
 
 }
 
-let responses=[];
+let S="";
+let O="";
+let V="";
+let place="";
+let time="";
+let reactions=[];
 
 for(
 const word
-in words
+in dictionary
 ){
 
 if(
-text.includes(
-word
-)
+text.includes(word)
 ){
 
-responses.push(
+const item=
+dictionary[word];
 
-words[word]
-.reply[
+if(item.type==="S")
+S=item.value;
+
+if(item.type==="O")
+O=item.value;
+
+if(item.type==="V")
+V=word;
+
+if(item.type==="place")
+place=item.value;
+
+if(item.type==="time")
+time=item.value;
+
+if(
+item.reply
+){
+
+reactions.push(
+
+item.reply[
 Math.floor(
-Math.random()
-*
-words[word]
-.reply.length
+Math.random()*
+item.reply.length
 )
 ]
 
@@ -192,29 +297,42 @@ words[word]
 
 }
 
+}
+
+let reply="☕ ";
+
 if(
-responses.length===0
+S||O||V
 ){
 
-responses.push(
+reply+=
+`${S}${time}${place}${O}${V}なんだね！ `;
 
-`☕ "${text}"気になる...`
+}
 
-);
+if(
+reactions.length
+){
+
+reply+=
+reactions.join(" ");
+
+}
+
+if(
+reply==="☕ "
+){
+
+reply=
+`☕ "${text}"気になる`;
 
 }
 
 return message.reply(
-
-responses.join(
-" / "
-)
-
+reply
 );
 
 }
-
-// 挨拶
 
 if(
 lower.includes(
