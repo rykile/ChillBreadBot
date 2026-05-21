@@ -7,8 +7,6 @@ const {
   PermissionsBitField
 } = require("discord.js");
 
-const { OpenAI } = require("openai");
-
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -18,166 +16,221 @@ const client = new Client({
   ]
 });
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
-
-// 招待チャンネルID
+// 招待チャンネル
 const inviteChannels = [
-  "1506605319357464659",
-  "1506605435082375219",
-  "1506605496730128565",
-  "1506605706093138123",
-  "1506605768286277712",
-  "1506605819439874058"
+ "1506605319357464659",
+ "1506605435082375219",
+ "1506605496730128565",
+ "1506605706093138123",
+ "1506605768286277712",
+ "1506605819439874058"
 ];
 
-client.once("ready", () => {
-  console.log(
-    `${client.user.tag} 起動完了☕`
-  );
+// 単語認識辞書
+const words = {
+
+  音楽:{
+    type:"topic",
+    reply:[
+      "音楽の話きた🎵",
+      "音楽いいね〜",
+      "曲作り気になる"
+    ]
+  },
+
+  韓国語:{
+    type:"language",
+    reply:[
+      "韓国語いいね🇰🇷",
+      "韓国語勉強してるの？",
+      "発音むずいよね笑"
+    ]
+  },
+
+  学校:{
+    type:"life",
+    reply:[
+      "学校どうだった？",
+      "学校お疲れ☕"
+    ]
+  },
+
+  疲れた:{
+    type:"emotion",
+    reply:[
+      "ちゃんと休んで🥲",
+      "無理しすぎ注意"
+    ]
+  },
+
+  楽しい:{
+    type:"emotion",
+    reply:[
+      "それは良かった！",
+      "楽しそう笑"
+    ]
+  }
+
+};
+
+client.once(
+"ready",
+()=>{
+
+console.log(
+`${client.user.tag}
+起動完了☕`
+);
+
 });
 
 client.on(
-  "messageCreate",
-  async(message)=>{
+"messageCreate",
+async(message)=>{
 
-    if(message.author.bot)
-      return;
+if(message.author.bot)
+return;
 
-    console.log(
-      "チャンネルID:",
-      message.channel.id
-    );
+const msg=
+message.content;
 
-    const msg =
-    message.content
-    .toLowerCase();
+const lower=
+msg.toLowerCase();
 
-    // ===== 招待欄 =====
+// 招待欄制御
 
-    if(
-      inviteChannels.includes(
-      message.channel.id
-      )
-    ){
+if(
+inviteChannels.includes(
+message.channel.id
+)
+){
 
-      // 管理者通過
-      if(
-        message.member
-        ?.permissions.has(
-          PermissionsBitField
-          .Flags
-          .Administrator
-        )
-      ){
-        return;
-      }
+if(
+message.member
+?.permissions.has(
+PermissionsBitField
+.Flags
+.Administrator
+)
+){
+return;
+}
 
-      // メンションあり通過
-      if(
-        message.mentions
-        .users.size>0
-      ){
-        return;
-      }
+if(
+message.mentions
+.users.size>0
+){
+return;
+}
 
-      try{
+try{
 
-        await message.delete();
+await message.delete();
 
-        await message.author.send(
-          "⚠️ 招待欄ではメンション付きのみ送信できます！"
-        );
+await message.author.send(
+"⚠️ 招待欄ではメンション付きのみ送信できます！"
+);
 
-      }catch(error){
+}catch{
 
-        console.log(
-          "削除失敗:",
-          error
-        );
+}
 
-      }
+return;
 
-      return;
+}
 
-    }
+// AI
 
-    // ===== AI =====
+if(
+lower.startsWith(
+"!ai"
+)
+){
 
-    if(
-      message.content
-      .startsWith("!ai")
-    ){
+const text=
+msg.replace(
+"!ai",
+""
+).trim();
 
-      const userMsg=
-      message.content
-      .replace(
-        "!ai",""
-      )
-      .trim();
+if(!text){
 
-      if(!userMsg){
+return message.reply(
+"☕ 話しかけて〜"
+);
 
-        return message.reply(
-          "☕ 何か話して〜"
-        );
+}
 
-      }
+let responses=[];
 
-      try{
+for(
+const word
+in words
+){
 
-        const completion =
-        await openai.chat.completions.create({
+if(
+text.includes(
+word
+)
+){
 
-          model:"gpt-4.1-mini",
+responses.push(
 
-          messages:[
-            {
-              role:"system",
-              content:
-              "あなたはChill Breadサーバーの優しくゆるいAIです。"
-            },
-            {
-              role:"user",
-              content:userMsg
-            }
-          ]
+words[word]
+.reply[
+Math.floor(
+Math.random()
+*
+words[word]
+.reply.length
+)
+]
 
-        });
+);
 
-        return message.reply(
-          "☕ "+
-          completion
-          .choices[0]
-          .message.content
-        );
+}
 
-      }catch{
+}
 
-        return message.reply(
-          "☕ 今ちょっと調子悪い..."
-        );
+if(
+responses.length===0
+){
 
-      }
+responses.push(
 
-    }
+`☕ "${text}"気になる...`
 
-    // ===== 挨拶 =====
+);
 
-    if(
-      msg.includes("こんにちは")
-      ||
-      msg.includes("やっほ")
-      ||
-      msg.includes("こん")
-    ){
+}
 
-      return message.reply(
-        "☕ やっほー！"
-      );
+return message.reply(
 
-    }
+responses.join(
+" / "
+)
+
+);
+
+}
+
+// 挨拶
+
+if(
+lower.includes(
+"こんにちは"
+)
+||
+lower.includes(
+"やっほ"
+)
+){
+
+return message.reply(
+"☕ やっほー！"
+);
+
+}
 
 });
 
