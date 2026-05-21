@@ -1,23 +1,28 @@
 // ===== dotenv =====
 require("dotenv").config();
 
-// ===== Discord =====
 const {
   Client,
   GatewayIntentBits,
   PermissionsBitField
 } = require("discord.js");
 
-// ===== Bot =====
+const { OpenAI } = require("openai");
+
 const client = new Client({
-  intents:[
+  intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.DirectMessages
   ]
 });
 
-// ===== 招待チャンネル =====
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
+
+// 招待チャンネルID
 const inviteChannels = [
   "1506605319357464659",
   "1506605435082375219",
@@ -27,131 +32,155 @@ const inviteChannels = [
   "1506605819439874058"
 ];
 
-// ===== 起動 =====
-client.once("clientReady", () => {
-  console.log(`${client.user.tag} 起動完了`);
+client.once("ready", () => {
+  console.log(
+    `${client.user.tag} 起動完了☕`
+  );
 });
 
-// ===== メッセージ =====
-client.on("messageCreate", async(message)=>{
- console.log(message.channel.id);
-  if(message.author.bot) return;
+client.on(
+  "messageCreate",
+  async(message)=>{
 
-  const msg =
-  message.content.toLowerCase();
+    if(message.author.bot)
+      return;
 
-  // ===== AI風会話 =====
-  if(message.content.startsWith("!ai")){
+    console.log(
+      "チャンネルID:",
+      message.channel.id
+    );
 
-    const userMsg =
+    const msg =
     message.content
-    .replace("!ai","")
-    .trim();
+    .toLowerCase();
 
-    if(!userMsg){
+    // ===== 招待欄 =====
+
+    if(
+      inviteChannels.includes(
+      message.channel.id
+      )
+    ){
+
+      // 管理者通過
+      if(
+        message.member
+        ?.permissions.has(
+          PermissionsBitField
+          .Flags
+          .Administrator
+        )
+      ){
+        return;
+      }
+
+      // メンションあり通過
+      if(
+        message.mentions
+        .users.size>0
+      ){
+        return;
+      }
+
+      try{
+
+        await message.delete();
+
+        await message.author.send(
+          "⚠️ 招待欄ではメンション付きのみ送信できます！"
+        );
+
+      }catch(error){
+
+        console.log(
+          "削除失敗:",
+          error
+        );
+
+      }
+
+      return;
+
+    }
+
+    // ===== AI =====
+
+    if(
+      message.content
+      .startsWith("!ai")
+    ){
+
+      const userMsg=
+      message.content
+      .replace(
+        "!ai",""
+      )
+      .trim();
+
+      if(!userMsg){
+
+        return message.reply(
+          "☕ 何か話して〜"
+        );
+
+      }
+
+      try{
+
+        const completion =
+        await openai.chat.completions.create({
+
+          model:"gpt-4.1-mini",
+
+          messages:[
+            {
+              role:"system",
+              content:
+              "あなたはChill Breadサーバーの優しくゆるいAIです。"
+            },
+            {
+              role:"user",
+              content:userMsg
+            }
+          ]
+
+        });
+
+        return message.reply(
+          "☕ "+
+          completion
+          .choices[0]
+          .message.content
+        );
+
+      }catch{
+
+        return message.reply(
+          "☕ 今ちょっと調子悪い..."
+        );
+
+      }
+
+    }
+
+    // ===== 挨拶 =====
+
+    if(
+      msg.includes("こんにちは")
+      ||
+      msg.includes("やっほ")
+      ||
+      msg.includes("こん")
+    ){
 
       return message.reply(
-        "☕ なんか話して〜"
+        "☕ やっほー！"
       );
 
     }
 
-    const reacts = [
-      "おーそれ",
-      "なるほど",
-      "ちょい分かる",
-      "いい話きた",
-      "それ面白いな"
-    ];
-
-    const react =
-    reacts[
-      Math.floor(
-        Math.random()*reacts.length
-      )
-    ];
-
-    let topic="default";
-
-    if(
-      msg.includes("音楽") ||
-      msg.includes("曲")
-    ){
-      topic="music";
-    }
-
-    else if(
-      msg.includes("韓国")
-    ){
-      topic="korea";
-    }
-
-    else if(
-      msg.includes("眠") ||
-      msg.includes("疲")
-    ){
-      topic="life";
-    }
-
-    const replies={
-
-      music:[
-        "どんな曲作ってる？",
-        "最近好きな音ある？",
-        "ジャンル気になる"
-      ],
-
-      korea:[
-        "文化？言語？",
-        "韓国語興味ある感じ？",
-        "K-POP聞く？"
-      ],
-
-      life:[
-        "最近疲れてる？",
-        "無理しすぎ注意ね",
-        "ちゃんと休めてる？"
-      ],
-
-      default:[
-        "もう少し聞きたい",
-        "それどういう流れ？",
-        "詳しく教えて"
-      ]
-
-    };
-
-    const list=replies[topic];
-
-    const reply=
-    list[
-      Math.floor(
-        Math.random()*list.length
-      )
-    ];
-
-    return message.reply(
-      `☕ ${react}。${reply}`
-    );
-
-  }
-
-  // ===== 普通会話 =====
-
-  if(
-    msg.includes("こんにちは")||
-    msg.includes("やっほ")
-  ){
-
-    return message.reply(
-      "やっほー！☕"
-    );
-
-  }
-
 });
 
-// ===== ログイン =====
 client.login(
-  process.env.DISCORD_TOKEN
+process.env.DISCORD_TOKEN
 );
