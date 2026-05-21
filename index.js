@@ -34,7 +34,7 @@ client.once("clientReady", () => {
 
 // ===== メッセージ =====
 client.on("messageCreate", async(message)=>{
-
+ console.log(message.channel.id);
   if(message.author.bot) return;
 
   const msg =
