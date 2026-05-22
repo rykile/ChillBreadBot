@@ -1,6 +1,6 @@
-// ===== dotenv =====
 require("dotenv").config();
 const fs = require("fs");
+
 const {
   Client,
   GatewayIntentBits,
@@ -22,22 +22,36 @@ const client = new Client({
 
 function loadMemory() {
   try {
-    return JSON.parse(fs.readFileSync("./memory/chatHistory.json", "utf8"));
+    return JSON.parse(
+      fs.readFileSync(
+        "./memory/chatHistory.json",
+        "utf8"
+      )
+    );
   } catch {
     return [];
   }
 }
 
 function saveMemory(data) {
-  fs.writeFileSync("./memory/chatHistory.json", JSON.stringify(data, null, 2));
+  fs.writeFileSync(
+    "./memory/chatHistory.json",
+    JSON.stringify(data, null, 2)
+  );
 }
 
 function addMemory(text) {
   const mem = loadMemory();
-  mem.push({ text, time: Date.now() });
 
-  // 最新30だけ保持
-  saveMemory(mem.slice(-30));
+  mem.push({
+    text,
+    time: Date.now()
+  });
+
+  // 最新50件保持
+  saveMemory(
+    mem.slice(-50)
+  );
 }
 
 // ======================
@@ -45,108 +59,252 @@ function addMemory(text) {
 // ======================
 
 const inviteChannels = [
-  "1506605319357464659",
-  "1506605435082375219",
-  "1506605496730128565",
-  "1506605706093138123",
-  "1506605768286277712",
-  "1506605819439874058"
+
+"1506605319357464659",
+"1506605435082375219",
+"1506605496730128565",
+"1506605706093138123",
+"1506605768286277712",
+"1506605819439874058"
+
 ];
 
 // ======================
 // 起動
 // ======================
 
-client.once("ready", () => {
-  console.log(`${client.user.tag} 起動完了☕`);
-});
+client.once(
+"ready",
+()=>{
+
+console.log(
+`${client.user.tag} 起動完了☕`
+);
+
+}
+);
 
 // ======================
 // メイン
 // ======================
 
-client.on("messageCreate", async (message) => {
-  if (message.author.bot) return;
+client.on(
+"messageCreate",
+async(message)=>{
 
-  const text = message.content;
+if(message.author.bot)return;
 
-  // ======================
-  // 記憶保存
-  // ======================
-  addMemory(text);
+const text=
+message.content;
 
-  const memory = loadMemory();
-  const last = memory[memory.length - 2]; // 1つ前
 
-  // ======================
-  // 招待制御
-  // ======================
-  if (inviteChannels.includes(message.channel.id)) {
-    if (message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) return;
-    if (message.mentions.users.size > 0) return;
+// ======================
+// 記憶保存
+// ======================
 
-    try {
-      await message.delete();
-      await message.author.send(
-        "⚠️ 招待チャンネルではメンション付きのみ送信できます。\n" +
-        "⚠️ In invite channels, only messages with mentions are allowed."
-      );
-    } catch {}
+addMemory(text);
 
-    return;
-  }
+const memory=
+loadMemory();
 
-  // ======================
-  // AI
-  // ======================
+const last=
+memory[
+memory.length-2
+];
 
-  if (text.startsWith("!ai")) {
-    const input = text.replace("!ai", "").trim();
+// ======================
+// 招待制御
+// ======================
 
-    let reply = "";
+if(
+inviteChannels.includes(
+message.channel.id
+)
+){
 
-    // ======================
-    // 自然な記憶呼び出し
-    // ======================
+if(
+message.member
+?.permissions.has(
+PermissionsBitField
+.Flags
+.Administrator
+)
+)return;
 
-    if (last && Math.random() > 0.5) {
-      if (
-        input.includes("それ") ||
-        input.includes("さっき") ||
-        input.includes("前")
-      ) {
-        reply += `さっきの「${last.text}」の話だよね。 `;
-      }
-    }
+if(
+message.mentions
+.users.size>0
+)return;
 
-    // ======================
-    // 通常会話
-    // ======================
+try{
 
-    if (input.includes("こんにちは")) {
-      reply += "やっほー☕";
-    } else if (input.includes("ありがとう")) {
-      reply += "どういたしまして。";
-    } else if (input.includes("眠い")) {
-      reply += "それはちゃんと休んだ方がいいやつ。";
-    } else {
-      reply += "うん、もう少し詳しく聞きたいかも。";
-    }
+await message.delete();
 
-    return message.reply(reply);
-  }
+await message.author.send(
 
-  // ======================
-  // 軽い反応
-  // ======================
+"⚠️ 招待チャンネルではメンション付きのみ送信できます。\n"+
+"⚠️ In invite channels, only messages with mentions are allowed."
 
-  if (text.includes("こんにちは") || text.includes("やっほ")) {
-    return message.reply("やっほー☕");
-  }
-});
+);
+
+}catch{}
+
+return;
+
+}
+
+
+// ======================
+// AI
+// ======================
+
+if(
+text.startsWith(
+"!ai"
+)
+){
+
+const input=
+text.replace(
+"!ai",
+""
+).trim();
+
+let reply="";
+
+
+// ======================
+// 自然な記憶
+// ======================
+
+const shouldUseMemory=
+
+last &&
+Math.random()<0.35;
+
+if(
+shouldUseMemory
+){
+
+const softMemoryReplies=[
+
+"なんか前もそんな話してた気がするけど、どうだったっけ。",
+
+"それ前に少し触れてたやつかな。",
+
+"あー、そんなこと言ってた気がする。",
+
+"前の話と少し繋がってる感じするね。"
+
+];
+
+reply+=
+
+softMemoryReplies[
+Math.floor(
+Math.random()*
+softMemoryReplies.length
+)
+]
+
++" ";
+
+}
+
+
+// ======================
+// 通常会話
+// ======================
+
+if(
+input.includes(
+"こんにちは"
+)
+){
+
+reply+="やっほー☕";
+
+}
+
+else if(
+input.includes(
+"ありがとう"
+)
+){
+
+reply+="どういたしまして！";
+
+}
+
+else if(
+input.includes(
+"眠い"
+)
+){
+
+reply+="それはちゃんと休んだ方がいいやつ🥲";
+
+}
+
+else{
+
+const randomReplies=[
+
+"なるほど、それでもう少し聞きたいかも。",
+
+"それ結構気になる。",
+
+"それでどうなった？",
+
+"その後の話もありそう笑"
+
+];
+
+reply+=
+
+randomReplies[
+Math.floor(
+Math.random()*
+randomReplies.length
+)
+];
+
+}
+
+return message.reply(
+reply
+);
+
+}
+
+
+// ======================
+// 軽い反応
+// ======================
+
+if(
+text.includes(
+"こんにちは"
+)
+||
+text.includes(
+"やっほ"
+)
+){
+
+return message.reply(
+"やっほー☕"
+);
+
+}
+
+}
+);
 
 // ======================
 // login
 // ======================
 
-client.login(process.env.DISCORD_TOKEN);
+client.login(
+process.env.DISCORD_TOKEN
+);
