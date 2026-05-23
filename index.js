@@ -1,64 +1,343 @@
 require("dotenv").config();
-const fs = require("fs");
+const fs=require("fs");
+const {fetch}=require("undici");
 
 const {
-  Client,
-  GatewayIntentBits,
-  PermissionsBitField
-} = require("discord.js");
+Client,
+GatewayIntentBits,
+PermissionsBitField
+}=require("discord.js");
 
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-    GatewayIntentBits.DirectMessages
-  ]
+const client=new Client({
+
+intents:[
+GatewayIntentBits.Guilds,
+GatewayIntentBits.GuildMessages,
+GatewayIntentBits.MessageContent,
+GatewayIntentBits.DirectMessages
+]
+
 });
 
 // ======================
 // memory
 // ======================
 
-function loadMemory() {
-  try {
-    return JSON.parse(
-      fs.readFileSync(
-        "./memory/chatHistory.json",
-        "utf8"
-      )
-    );
-  } catch {
-    return [];
-  }
+function loadMemory(){
+
+try{
+
+return JSON.parse(
+fs.readFileSync(
+"./memory/chatHistory.json",
+"utf8"
+)
+
+);
+
+}catch{
+
+return [];
+
 }
 
-function saveMemory(data) {
-  fs.writeFileSync(
-    "./memory/chatHistory.json",
-    JSON.stringify(data, null, 2)
-  );
 }
 
-function addMemory(text) {
-  const mem = loadMemory();
+function saveMemory(data){
 
-  mem.push({
-    text,
-    time: Date.now()
-  });
+fs.writeFileSync(
 
-  // 最新50件保持
-  saveMemory(
-    mem.slice(-50)
-  );
+"./memory/chatHistory.json",
+
+JSON.stringify(
+data,
+null,
+2
+)
+
+);
+
+}
+
+function addMemory(text){
+
+const mem=
+loadMemory();
+
+mem.push({
+
+text,
+time:Date.now()
+
+});
+
+saveMemory(
+mem.slice(-50)
+);
+
+}
+
+// ======================
+// personality
+// ======================
+
+function loadPersonality(){
+
+try{
+
+return JSON.parse(
+
+fs.readFileSync(
+"./memory/personality.json",
+"utf8"
+)
+
+);
+
+}catch{
+
+return{
+
+favoriteTopics:{}
+
+};
+
+}
+
+}
+
+function savePersonality(data){
+
+fs.writeFileSync(
+
+"./memory/personality.json",
+
+JSON.stringify(
+data,
+null,
+2
+)
+
+);
+
+}
+
+// ======================
+// 固定会話
+// ======================
+
+const fixedPhrases={
+
+"こんにちは":{
+
+reply:[
+
+"やっほー☕",
+"こんにちは！",
+"来てくれてありがとう☕"
+
+]
+
+},
+
+"おはよう":{
+
+reply:[
+
+"おはよう☀️",
+"朝早いね笑"
+
+]
+
+},
+
+"こんばんは":{
+
+reply:[
+
+"こんばんは🌙",
+"夜だね"
+
+]
+
+},
+
+"おやすみ":{
+
+reply:[
+
+"ちゃんと休んで😴",
+"おやすみ〜"
+
+]
+
+},
+
+"ありがとう":{
+
+reply:[
+
+"どういたしまして☕",
+"いつでも！"
+
+]
+
+},
+
+"なんか話題ない？":{
+
+reply:[
+
+"最近音楽どう？",
+
+"韓国語最近どう？",
+
+"最近作曲進んでる？"
+
+]
+
+}
+
+};
+
+// ======================
+// 活用
+// ======================
+
+const normalizeWords={
+
+"作った":"作る",
+"作ってる":"作る",
+
+"勉強してる":"勉強する",
+
+"疲れてる":"疲れた",
+
+"楽しかった":"楽しい"
+
+};
+
+function normalizeText(text){
+
+let result=text;
+
+for(
+const key
+in normalizeWords
+){
+
+result=
+result.replaceAll(
+key,
+normalizeWords[key]
+);
+
+}
+
+return result;
+
+}
+
+// ======================
+// 助詞
+// ======================
+
+function analyzeParticles(text){
+
+const result={};
+
+const particles=[
+
+"は",
+"が",
+"を",
+"に",
+"で",
+"へ",
+"と"
+
+];
+
+for(
+const p
+of particles
+){
+
+const regex=
+new RegExp(
+`(.+?)${p}(.+)`
+);
+
+const match=
+text.match(regex);
+
+if(
+match
+){
+
+if(
+match[1]==="こんにち"
+) continue;
+
+result[p]={
+
+before:
+match[1].trim(),
+
+after:
+match[2].trim()
+
+};
+
+}
+
+}
+
+return result;
+
+}
+
+// ======================
+// web
+// ======================
+
+async function searchWeb(query){
+
+try{
+
+const response=
+await fetch(
+
+`https://api.duckduckgo.com/?q=${
+encodeURIComponent(query)
+}&format=json`
+
+);
+
+const data=
+await response.json();
+
+return(
+
+data.AbstractText||
+data.Heading||
+null
+
+);
+
+}catch{
+
+return null;
+
+}
+
 }
 
 // ======================
 // 招待チャンネル
 // ======================
 
-const inviteChannels = [
+const inviteChannels=[
 
 "1506605319357464659",
 "1506605435082375219",
@@ -74,7 +353,7 @@ const inviteChannels = [
 // ======================
 
 client.once(
-"ready",
+"clientReady",
 ()=>{
 
 console.log(
@@ -84,37 +363,38 @@ console.log(
 }
 );
 
+process.on(
+"unhandledRejection",
+console.error
+);
+
+process.on(
+"uncaughtException",
+console.error
+);
+
 // ======================
-// メイン
+// main
 // ======================
 
 client.on(
 "messageCreate",
+
 async(message)=>{
 
-if(message.author.bot)return;
+console.log(
+"受信:",
+message.content
+);
+
+if(
+message.author.bot
+)return;
 
 const text=
 message.content;
 
-
-// ======================
-// 記憶保存
-// ======================
-
-addMemory(text);
-
-const memory=
-loadMemory();
-
-const last=
-memory[
-memory.length-2
-];
-
-// ======================
-// 招待制御
-// ======================
+// 招待欄
 
 if(
 inviteChannels.includes(
@@ -123,18 +403,17 @@ message.channel.id
 ){
 
 if(
+
 message.member
 ?.permissions.has(
-PermissionsBitField
-.Flags
-.Administrator
+PermissionsBitField.Flags.Administrator
 )
+
 )return;
 
 if(
-message.mentions
-.users.size>0
-)return;
+message.mentions.users.size===0
+){
 
 try{
 
@@ -147,127 +426,209 @@ await message.author.send(
 
 );
 
-}catch{}
+console.log(
+"削除成功"
+);
+
+}catch(err){
+
+console.log(
+"削除エラー:",
+err
+);
+
+}
 
 return;
 
 }
 
+}
 
-// ======================
+// 記憶
+
+addMemory(text);
+
+const memory=
+loadMemory();
+
+const last=
+memory[
+memory.length-2
+];
+
 // AI
-// ======================
 
 if(
-text.startsWith(
-"!ai"
-)
+text.startsWith("!ai")
 ){
 
-const input=
+let input=
 text.replace(
 "!ai",
 ""
 ).trim();
 
-let reply="";
+input=
+normalizeText(
+input);
 
-
-// ======================
-// 自然な記憶
-// ======================
-
-const shouldUseMemory=
-
-last &&
-Math.random()<0.35;
+// 固定会話優先
 
 if(
-shouldUseMemory
+fixedPhrases[input]
 ){
 
-const softMemoryReplies=[
+const list=
+fixedPhrases[input].reply;
 
-"なんか前もそんな話してた気がするけど、どうだったっけ。",
+return message.reply(
 
-"それ前に少し触れてたやつかな。",
-
-"あー、そんなこと言ってた気がする。",
-
-"前の話と少し繋がってる感じするね。"
-
-];
-
-reply+=
-
-softMemoryReplies[
+list[
 Math.floor(
 Math.random()*
-softMemoryReplies.length
+list.length
 )
+
 ]
 
-+" ";
+);
 
 }
 
+const grammar=
+analyzeParticles(
+input
+);
 
-// ======================
-// 通常会話
-// ======================
+const p=
+loadPersonality();
+
+input
+.split(/\s+/)
+.forEach(word=>{
 
 if(
-input.includes(
-"こんにちは"
-)
+word.length<2
+)return;
+
+if(
+!p.favoriteTopics[word]
 ){
 
-reply+="やっほー☕";
+p.favoriteTopics[word]=0;
 
 }
 
-else if(
-input.includes(
-"ありがとう"
-)
+p.favoriteTopics[word]++;
+
+});
+
+savePersonality(
+p
+);
+
+let reply="";
+
+// 記憶
+
+const memoryWords=[
+
+"それ",
+"前",
+"さっき",
+"続き",
+"また"
+
+];
+
+const useMemory=
+
+memoryWords.some(
+w=>
+input.includes(w)
+);
+
+if(
+last &&
+useMemory
 ){
 
-reply+="どういたしまして！";
+reply+=
+`さっきの「${last.text}」の続き？ `;
 
 }
 
-else if(
-input.includes(
-"眠い"
-)
-){
+// 助詞
 
-reply+="それはちゃんと休んだ方がいいやつ🥲";
+if(grammar["は"]){
+
+reply+=
+`${grammar["は"].before}の話かな。 `;
 
 }
 
-else{
+if(grammar["で"]){
 
-const randomReplies=[
+reply+=
+`${grammar["で"].before}が場所っぽいね。 `;
 
-"なるほど、それでもう少し聞きたいかも。",
+}
 
-"それ結構気になる。",
+if(grammar["を"]){
 
-"それでどうなった？",
+reply+=
+`${grammar["を"].before}が対象かな。 `;
 
-"その後の話もありそう笑"
+}
+
+// 会話
+
+if(
+input.includes("眠い")
+){
+
+reply+="ちゃんと休んで🥲";
+
+}else{
+
+const web=
+await searchWeb(
+input
+);
+
+if(
+web
+){
+
+reply+=
+`少し調べたけど ${web}`;
+
+}else{
+
+const random=[
+
+"気になる笑",
+
+"詳しく聞きたい",
+
+"どうなった？",
+
+"続きありそう"
 
 ];
 
 reply+=
 
-randomReplies[
+random[
 Math.floor(
 Math.random()*
-randomReplies.length
+random.length
 )
+
 ];
+
+}
 
 }
 
@@ -277,34 +638,8 @@ reply
 
 }
 
-
-// ======================
-// 軽い反応
-// ======================
-
-if(
-text.includes(
-"こんにちは"
-)
-||
-text.includes(
-"やっほ"
-)
-){
-
-return message.reply(
-"やっほー☕"
-);
-
-}
-
 }
 );
-
-// ======================
-// login
-// ======================
 
 client.login(
-process.env.DISCORD_TOKEN
-);
+process.env.DISCORD_TOKEN);
