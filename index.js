@@ -1,200 +1,107 @@
-require("dotenv").config();
-const fs = require("fs");
 const {
   Client,
   GatewayIntentBits,
-  PermissionsBitField
+  Collection,
+  Events,
+  REST,
+  Routes,
 } = require("discord.js");
 
+const fs = require("fs");
+const path = require("path");
+require("dotenv").config();
+
+const config = require("./config");
+
+// =========================
+// ■ Client
+// =========================
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-    GatewayIntentBits.DirectMessages
-  ]
+  intents: [GatewayIntentBits.Guilds],
 });
 
-console.log("Bot starting...");
+client.commands = new Collection();
 
-// ======================
-// memory system
-// ======================
+// =========================
+// ■ コマンド読み込み
+// =========================
+const commandsPath = path.join(__dirname, "commands");
+const commandFiles = fs.readdirSync(commandsPath).filter(f => f.endsWith(".js"));
 
-const memoryFile = "./memory/chatHistory.json";
+for (const file of commandFiles) {
+  const command = require(`./commands/${file}`);
+  client.commands.set(command.data.name, command);
+}
 
-function loadMemory() {
+// =========================
+// ■ Interaction管理
+// =========================
+client.on(Events.InteractionCreate, async (interaction) => {
   try {
-    return JSON.parse(fs.readFileSync(memoryFile, "utf8"));
-  } catch {
-    return [];
-  }
-}
+    // スラッシュコマンド
+    if (interaction.isChatInputCommand()) {
+      const command = client.commands.get(interaction.commandName);
+      if (!command) return;
 
-function saveMemory(data) {
-  fs.writeFileSync(memoryFile, JSON.stringify(data, null, 2));
-}
-
-function addMemory(text) {
-  const mem = loadMemory();
-  mem.push({ text, time: Date.now() });
-  saveMemory(mem.slice(-50));
-}
-
-// ======================
-// 招待チャンネル
-// ======================
-
-const inviteChannels = [
-  "1506605319357464659",
-  "1506605435082375219",
-  "1506605496730128565",
-  "1506605706093138123",
-  "1506605768286277712",
-  "1506605819439874058"
-];
-
-// ======================
-// 固定フレーズ
-// ======================
-
-const fixedPhrases = {
-  "こんにちは": ["やっほー☕", "こんにちは！"],
-  "おはよう": ["おはよう☀️"],
-  "こんばんは": ["こんばんは🌙"],
-  "ありがとう": ["どういたしまして☕"],
-  "なんか話題ない？": ["最近音楽どう？", "作曲進んでる？"]
-};
-
-// ======================
-// 起動
-// ======================
-
-client.once("clientReady", () => {
-  console.log(`${client.user.tag} 起動完了☕`);
-});
-
-// ======================
-// メイン処理
-// ======================
-
-client.on("messageCreate", async (message) => {
-  if (message.author.bot) return;
-
-  const text = message.content;
-
-  console.log("受信:", text);
-
-  // ======================
-  // ① 招待チャンネル制御（最優先）
-  // ======================
-
-  if (inviteChannels.includes(message.channel.id)) {
-
-    if (
-      message.member?.permissions.has(
-        PermissionsBitField.Flags.Administrator
-      )
-    ) return;
-
-    if (message.mentions.users.size === 0) {
-
-      try {
-        await message.delete();
-
-        await message.author.send(
-          "⚠️ 招待チャンネルではメンション付きのみ送信できます。\n" +
-          "⚠️ Only mentions are allowed in invite channels."
-        );
-
-        console.log("招待メッセージ削除");
-      } catch (err) {
-        console.log("削除失敗:", err.message);
-      }
-
+      await command.execute(interaction);
       return;
     }
-  }
 
-  // ======================
-  // ② 記憶保存
-  // ======================
-
-  addMemory(text);
-
-  const memory = loadMemory();
-  const last = memory[memory.length - 2];
-
-  // ======================
-  // ③ !ai
-  // ======================
-
-  if (text.startsWith("!ai")) {
-
-    let input = text.replace("!ai", "").trim();
-
-    // ======================
-    // 固定フレーズ優先
-    // ======================
-
-    if (fixedPhrases[input]) {
-      const list = fixedPhrases[input];
-      return message.reply(
-        list[Math.floor(Math.random() * list.length)]
-      );
+    // ボタン（将来拡張用）
+    if (interaction.isButton()) {
+      if (interaction.customId === "ping") {
+        return interaction.reply({
+          content: "pong",
+          ephemeral: true,
+        });
+      }
     }
+  } catch (err) {
+    console.error(err);
 
-    let reply = "";
+    if (interaction.replied || interaction.deferred) return;
 
-    // ======================
-    // 記憶呼び出し
-    // ======================
-
-    const memoryWords = ["それ", "前", "さっき", "続き"];
-
-    if (
-      last &&
-      memoryWords.some(w => input.includes(w))
-    ) {
-      reply += `さっきの「${last.text}」の続きかな？ `;
-    }
-
-    // ======================
-    // シンプル反応
-    // ======================
-
-    if (input.includes("眠い")) {
-      reply += "ちゃんと休んで🥲";
-    } else if (input.includes("疲れ")) {
-      reply += "無理しないで";
-    } else {
-      const random = [
-        "気になる笑",
-        "もう少し詳しく聞きたい",
-        "続きありそう",
-        "それ面白いね"
-      ];
-
-      reply += random[Math.floor(Math.random() * random.length)];
-    }
-
-    return message.reply(reply);
-  }
-
-  // ======================
-  // ④ 軽いリアクション
-  // ======================
-
-  if (
-    text.includes("こんにちは") ||
-    text.includes("やっほ")
-  ) {
-    return message.reply("やっほー☕");
+    await interaction.reply({
+      content: "エラーが発生しました",
+      ephemeral: true,
+    });
   }
 });
 
-// ======================
-// login
-// ======================
+// =========================
+// ■ 起動ログ
+// =========================
+client.once(Events.ClientReady, (c) => {
+  console.log(`Logged in as ${c.user.tag}`);
+});
 
-client.login(process.env.DISCORD_TOKEN);
+// =========================
+// ■ コマンド登録（自動）
+// =========================
+async function registerCommands() {
+  const commands = [];
+
+  for (const file of commandFiles) {
+    const command = require(`./commands/${file}`);
+    commands.push(command.data.toJSON());
+  }
+
+  const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
+
+  console.log("コマンド登録中...");
+
+  await rest.put(
+    Routes.applicationCommands(process.env.CLIENT_ID),
+    { body: commands }
+  );
+
+  console.log("コマンド登録完了");
+}
+
+// =========================
+// ■ 起動
+// =========================
+(async () => {
+  await registerCommands();
+  await client.login(process.env.TOKEN);
+})();
