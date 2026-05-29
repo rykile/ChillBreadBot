@@ -14,8 +14,14 @@
   "dependencies": {
     "discord.js": "^14.26.4",
     "dotenv": "^17.4.2",
-    "express": "^5.2.1",
-    "openai": "^6.38.0",
-    "undici": "^8.3.0"
-  }
+    "openai": "^6.38.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rykile/ChillBreadBot.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rykile/ChillBreadBot/issues"
+  },
+  "homepage": "https://github.com/rykile/ChillBreadBot#readme"
 }
