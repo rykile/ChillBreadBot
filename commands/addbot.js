@@ -14,12 +14,13 @@ function generateInviteUrl() {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("addbot")
-    .setDescription("Botを導入します"),
+    .setDescription("Botを導入します（招待チャンネル専用）"),
 
   async execute(interaction) {
+    // 招待専用チャンネル以外では実行不可
     if (interaction.channelId !== config.INVITE_CHANNEL_ID) {
       return interaction.reply({
-        content: "このコマンドは招待チャンネルでのみ使用できます。",
+        content: "このコマンドは招待専用チャンネルでのみ使用できます。",
         ephemeral: true,
       });
     }
@@ -32,10 +33,9 @@ module.exports = {
     );
 
     await interaction.reply({
-      content: "こちらからBotを導入できます。",
+      content: "下のボタンからBotを導入できます。",
       components: [row],
       ephemeral: true,
     });
   },
-};
 };
