@@ -91,9 +91,12 @@ async function registerCommands() {
   console.log("コマンド登録中...");
 
   await rest.put(
-    Routes.applicationCommands(process.env.CLIENT_ID),
-    { body: commands }
-  );
+  Routes.applicationGuildCommands(
+    process.env.CLIENT_ID,
+    process.env.GUILD_ID
+  ),
+  { body: commands }
+);
 
   console.log("コマンド登録完了");
 }
