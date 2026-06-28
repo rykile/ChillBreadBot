@@ -18,12 +18,12 @@ module.exports = {
 
   async execute(interaction) {
     // 招待専用チャンネル以外では実行不可
-    if (interaction.channelId !== config.INVITE_CHANNEL_ID) {
-      return interaction.reply({
-        content: "このコマンドは招待専用チャンネルでのみ使用できます。",
-        ephemeral: true,
-      });
-    }
+    if (!config.INVITE_CHANNEL_IDS.includes(interaction.channelId)) {
+  return interaction.reply({
+    content: "このコマンドは招待専用チャンネルでのみ使用できます。",
+    ephemeral: true,
+  });
+}
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
