@@ -43,7 +43,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const command = client.commands.get(interaction.commandName);
       if (!command) return;
 
-      await command.execute(interaction);
+console.log("実行コマンド:", interaction.commandName);
+await command.execute(interaction);
+console.log("実行成功");
       return;
     }
 
