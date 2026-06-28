@@ -61,13 +61,12 @@ console.log("実行成功");
   } catch (err) {
     console.error(err);
 
-    if (interaction.replied || interaction.deferred) return;
-
-    await interaction.reply({
-      content: "エラーが発生しました",
-      ephemeral: true,
-    });
-  }
+    if (!interaction.replied && !interaction.deferred) {
+  await interaction.reply({
+    content: "エラーが発生しました",
+    flags: 64,
+  });
+}
 });
 
 // =========================
