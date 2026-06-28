@@ -27,7 +27,9 @@ client.commands = new Collection();
 // ■ コマンド読み込み
 // =========================
 const commandsPath = path.join(__dirname, "commands");
-const commandFiles = fs.readdirSync(commandsPath).filter(f => f.endsWith(".js"));
+const commandFiles = fs
+  .readdirSync(commandsPath)
+  .filter((file) => file.endsWith(".js"));
 
 for (const file of commandFiles) {
   const command = require(`./commands/${file}`);
@@ -42,32 +44,41 @@ client.on(Events.InteractionCreate, async (interaction) => {
     // スラッシュコマンド
     if (interaction.isChatInputCommand()) {
       const command = client.commands.get(interaction.commandName);
+
       if (!command) return;
 
-console.log("実行コマンド:", interaction.commandName);
-await command.execute(interaction);
-console.log("実行成功");
+      console.log("実行コマンド:", interaction.commandName);
+
+      await command.execute(interaction);
+
+      console.log("実行成功");
+
       return;
     }
 
     // ボタン（将来拡張用）
     if (interaction.isButton()) {
       if (interaction.customId === "ping") {
-       return interaction.reply({
-        content: "pong",
-        flags: MessageFlags.Ephemeral,
-       });
+        return interaction.reply({
+          content: "pong",
+          flags: MessageFlags.Ephemeral,
+        });
       }
     }
   } catch (err) {
     console.error(err);
 
     if (!interaction.replied && !interaction.deferred) {
-  await interaction.reply({
-    content: "エラーが発生しました",
-    flags: MessageFlags.Ephemeral,
-  });
-}
+      try {
+        await interaction.reply({
+          content: "エラーが発生しました。",
+          flags: MessageFlags.Ephemeral,
+        });
+      } catch (replyError) {
+        console.error("返信エラー:", replyError);
+      }
+    }
+  }
 });
 
 // =========================
@@ -78,7 +89,7 @@ client.once(Events.ClientReady, (c) => {
 });
 
 // =========================
-// ■ コマンド登録（自動）
+// ■ コマンド登録（ギルド）
 // =========================
 async function registerCommands() {
   const commands = [];
@@ -88,17 +99,21 @@ async function registerCommands() {
     commands.push(command.data.toJSON());
   }
 
-  const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
+  const rest = new REST({ version: "10" }).setToken(
+    process.env.DISCORD_TOKEN
+  );
 
   console.log("コマンド登録中...");
 
   await rest.put(
-  Routes.applicationGuildCommands(
-    process.env.CLIENT_ID,
-    process.env.GUILD_ID
-  ),
-  { body: commands }
-);
+    Routes.applicationGuildCommands(
+      process.env.CLIENT_ID,
+      process.env.GUILD_ID
+    ),
+    {
+      body: commands,
+    }
+  );
 
   console.log("コマンド登録完了");
 }
@@ -107,6 +122,10 @@ async function registerCommands() {
 // ■ 起動
 // =========================
 (async () => {
-  await registerCommands();
-  await client.login(process.env.DISCORD_TOKEN);
+  try {
+    await registerCommands();
+    await client.login(process.env.DISCORD_TOKEN);
+  } catch (err) {
+    console.error("起動エラー:", err);
+  }
 })();
