@@ -5,6 +5,7 @@ const {
   Events,
   REST,
   Routes,
+  MessageFlags,
 } = require("discord.js");
 
 const fs = require("fs");
@@ -52,10 +53,10 @@ console.log("実行成功");
     // ボタン（将来拡張用）
     if (interaction.isButton()) {
       if (interaction.customId === "ping") {
-        return interaction.reply({
-          content: "pong",
-          ephemeral: true,
-        });
+       return interaction.reply({
+        content: "pong",
+        flags: MessageFlags.Ephemeral,
+       });
       }
     }
   } catch (err) {
@@ -64,7 +65,7 @@ console.log("実行成功");
     if (!interaction.replied && !interaction.deferred) {
   await interaction.reply({
     content: "エラーが発生しました",
-    flags: 64,
+    flags: MessageFlags.Ephemeral,
   });
 }
 });
