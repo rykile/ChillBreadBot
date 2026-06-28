@@ -3,6 +3,7 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  MessageFlags,
 } = require("discord.js");
 
 const config = require("../config");
@@ -19,11 +20,11 @@ module.exports = {
   async execute(interaction) {
     // 招待専用チャンネル以外では実行不可
     if (!config.INVITE_CHANNEL_IDS.includes(interaction.channelId)) {
-  return interaction.reply({
-    content: "このコマンドは招待専用チャンネルでのみ使用できます。",
-    ephemeral: true,
-  });
-}
+      return interaction.reply({
+        content: "このコマンドは招待専用チャンネルでのみ使用できます。",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
@@ -35,7 +36,7 @@ module.exports = {
     await interaction.reply({
       content: "下のボタンからBotを導入できます。",
       components: [row],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   },
 };
