@@ -86,7 +86,7 @@ async function registerCommands() {
     commands.push(command.data.toJSON());
   }
 
-  const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
+  const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
 
   console.log("コマンド登録中...");
 
@@ -103,5 +103,5 @@ async function registerCommands() {
 // =========================
 (async () => {
   await registerCommands();
-  await client.login(process.env.TOKEN);
+  await client.login(process.env.DISCORD_TOKEN);
 })();
