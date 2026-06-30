@@ -1,21 +1,27 @@
-const { SlashCommandBuilder } = require("discord.js");
+const {
+  SlashCommandBuilder,
+  MessageFlags,
+} = require("discord.js");
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("help")
-    .setDescription("コマンド一覧を表示"),
+    .setDescription("コマンド一覧を表示します。"),
 
   async execute(interaction) {
     await interaction.reply({
-      content:
-`📖 Chill Bread Bot コマンド一覧
+      content: `# 📖 Chill Bread Bot コマンド一覧
 
-/ping
-→ Botの応答確認
+🤖 **/addbot**
+Botを導入するための招待ボタンを表示します。
+（招待専用チャンネルのみ）
 
-/help
-→ このヘルプを表示`,
-      ephemeral: true,
+🏓 **/ping**
+Botが正常に動作しているか確認します。
+
+❓ **/help**
+このヘルプを表示します。`,
+      flags: MessageFlags.Ephemeral,
     });
   },
 };
