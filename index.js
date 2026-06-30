@@ -6,6 +6,7 @@ const {
   REST,
   Routes,
   MessageFlags,
+  PermissionsBitField,
 } = require("discord.js");
 
 const fs = require("fs");
@@ -15,18 +16,25 @@ require("dotenv").config();
 const config = require("./config");
 
 // =========================
-// ■ Client
+// Client
 // =========================
+
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ],
 });
 
 client.commands = new Collection();
 
 // =========================
-// ■ コマンド読み込み
+// コマンド読み込み
 // =========================
+
 const commandsPath = path.join(__dirname, "commands");
+
 const commandFiles = fs
   .readdirSync(commandsPath)
   .filter((file) => file.endsWith(".js"));
@@ -37,60 +45,95 @@ for (const file of commandFiles) {
 }
 
 // =========================
-// ■ Interaction管理
+// Slash Commands
 // =========================
+
 client.on(Events.InteractionCreate, async (interaction) => {
   try {
-    // スラッシュコマンド
-    if (interaction.isChatInputCommand()) {
-      const command = client.commands.get(interaction.commandName);
+    if (!interaction.isChatInputCommand()) return;
 
-      if (!command) return;
+    const command = client.commands.get(interaction.commandName);
 
-      console.log("実行コマンド:", interaction.commandName);
+    if (!command) return;
 
-      await command.execute(interaction);
+    console.log(`実行コマンド: ${interaction.commandName}`);
 
-      console.log("実行成功");
+    await command.execute(interaction);
 
-      return;
-    }
-
-    // ボタン（将来拡張用）
-    if (interaction.isButton()) {
-      if (interaction.customId === "ping") {
-        return interaction.reply({
-          content: "pong",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
-    }
+    console.log("実行成功");
   } catch (err) {
     console.error(err);
 
     if (!interaction.replied && !interaction.deferred) {
       try {
         await interaction.reply({
-          content: "エラーが発生しました。",
+          content: "❌ エラーが発生しました。",
           flags: MessageFlags.Ephemeral,
         });
-      } catch (replyError) {
-        console.error("返信エラー:", replyError);
-      }
+      } catch {}
     }
   }
 });
 
 // =========================
-// ■ 起動ログ
+// 招待チャンネル保護
 // =========================
-client.once(Events.ClientReady, (c) => {
-  console.log(`Logged in as ${c.user.tag}`);
+
+client.on(Events.MessageCreate, async (message) => {
+  // Botは無視
+  if (message.author.bot) return;
+
+  // DMは無視
+  if (!message.guild) return;
+
+  // 対象チャンネル以外は無視
+  if (!config.INVITE_CHANNEL_IDS.includes(message.channel.id)) return;
+
+  // メンション付きは許可
+  if (message.mentions.users.size > 0) return;
+
+  // 管理者は許可
+  if (
+    message.member.permissions.has(
+      PermissionsBitField.Flags.Administrator
+    )
+  ) {
+    return;
+  }
+
+  try {
+    // ユーザーのメッセージ削除
+    await message.delete();
+
+    // 注意メッセージ送信
+    const warn = await message.channel.send({
+      content:
+        `❌ **このチャンネルでは通常メッセージは送信できません。**\n` +
+        `💬 メンション付きメッセージのみ可能です。`,
+    });
+
+    // 5秒後に削除
+    setTimeout(async () => {
+      try {
+        await warn.delete();
+      } catch {}
+    }, 5000);
+  } catch (err) {
+    console.error("MessageDelete Error:", err);
+  }
+});
+// =========================
+// 起動ログ
+// =========================
+
+client.once(Events.ClientReady, (clientUser) => {
+  console.log(`✅ Logged in as ${clientUser.user.tag}`);
 });
 
 // =========================
-// ■ コマンド登録（ギルド）
+// コマンド登録
 // =========================
+
 async function registerCommands() {
   const commands = [];
 
@@ -103,7 +146,7 @@ async function registerCommands() {
     process.env.DISCORD_TOKEN
   );
 
-  console.log("コマンド登録中...");
+  console.log("📥 コマンド登録中...");
 
   await rest.put(
     Routes.applicationGuildCommands(
@@ -115,17 +158,19 @@ async function registerCommands() {
     }
   );
 
-  console.log("コマンド登録完了");
+  console.log("✅ コマンド登録完了");
 }
 
 // =========================
-// ■ 起動
+// Bot起動
 // =========================
+
 (async () => {
   try {
     await registerCommands();
+
     await client.login(process.env.DISCORD_TOKEN);
   } catch (err) {
-    console.error("起動エラー:", err);
+    console.error("❌ 起動エラー:", err);
   }
 })();
