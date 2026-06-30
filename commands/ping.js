@@ -1,11 +1,24 @@
-const { SlashCommandBuilder } = require("discord.js");
+const {
+  SlashCommandBuilder,
+  MessageFlags,
+} = require("discord.js");
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("ping")
-    .setDescription("Botの応答確認"),
+    .setDescription("Botの応答を確認します。"),
 
   async execute(interaction) {
-    await interaction.reply("🏓 Pong!");
+    const latency = Date.now() - interaction.createdTimestamp;
+
+    await interaction.reply({
+      content:
+`🏓 Pong!
+
+🤖 Botは正常に動作しています。
+
+⏱️ 応答速度: **${latency}ms**`,
+      flags: MessageFlags.Ephemeral,
+    });
   },
 };
