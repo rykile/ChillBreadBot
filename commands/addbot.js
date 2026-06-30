@@ -15,26 +15,27 @@ function generateInviteUrl() {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("addbot")
-    .setDescription("Botを導入します（招待チャンネル専用）"),
+    .setDescription("Botを導入するための招待ボタンを表示します。"),
 
   async execute(interaction) {
-    // 招待専用チャンネル以外では実行不可
+    // 招待チャンネル以外では使用不可
     if (!config.INVITE_CHANNEL_IDS.includes(interaction.channelId)) {
       return interaction.reply({
-        content: "このコマンドは招待専用チャンネルでのみ使用できます。",
+        content: "❌ このコマンドは招待専用チャンネルでのみ使用できます。",
         flags: MessageFlags.Ephemeral,
       });
     }
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
-        .setLabel("🤖 Botを追加")
+        .setLabel("🤖 Chill Bread Bot を追加")
         .setStyle(ButtonStyle.Link)
         .setURL(generateInviteUrl())
     );
 
     await interaction.reply({
-      content: "下のボタンからBotを導入できます。",
+      content:
+        "下のボタンを押すと、あなたのサーバーへ **Chill Bread Bot** を追加できます！",
       components: [row],
       flags: MessageFlags.Ephemeral,
     });
