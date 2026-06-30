@@ -114,10 +114,10 @@ client.on(Events.MessageCreate, async (message) => {
 
     // 5秒後に削除
     setTimeout(async () => {
-      try {
-        await warn.delete();
-      } catch {}
-    }, 5000);
+  　try {
+     await warn.delete();
+  　　} catch {}
+　　 }, config.DELETE_WARNING_TIME);
   } catch (err) {
     console.error("MessageDelete Error:", err);
   }
